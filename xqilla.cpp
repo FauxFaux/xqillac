@@ -258,19 +258,12 @@ int main(int argc, char *argv[])
       }
     }
   }
-  catch(XQException &e)
-  {
+  catch(XQException &e) {
     std::cerr << "Caught XQException:" << std::endl << UTF8(e.getError()) << std::endl;
-    std::cerr << "at " << UTF8(e.m_szFile) << ":" << e.m_nLine << ":" << e.m_nColumn << std::endl;
+    std::cerr << "at " << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn() << std::endl;
     return 1;
   }
-  catch(DSLException &e)
-  {
-    std::cerr << "Caught DSLException:" << std::endl << UTF8(e.getError()) << std::endl;
-    return 1;
-  }
-  catch(...)
-  {
+  catch(...) {
     std::cerr << "Caught unknown exception" << std::endl;
     return 1;
   }
