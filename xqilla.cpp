@@ -243,7 +243,7 @@ int main(int argc, char *argv[])
         time_t now;
         dynamic_context->setCurrentTime(time(&now));
 
-        Result result = (*it2)->evaluate(dynamic_context.get()).toSequence(dynamic_context.get());
+        Result result = (*it2)->execute(dynamic_context.get()).toSequence(dynamic_context.get());
         ++executionCount;
 
         if(outputFile != NULL || !quiet) {
