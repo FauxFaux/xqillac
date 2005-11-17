@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
 void usage(const char *progname)
 {
   std::cerr << "Usage: " << progname << " [options] <XQuery file>..." << std::endl << std::endl;
-  std::cerr << "-b <baseURI>   : Set the base URI for the XPath2 context" << std::endl;
+  std::cerr << "-b <baseURI>   : Set the base URI for the context" << std::endl;
   std::cerr << "-d <host:port> : Enable remote debugging" << std::endl;
   std::cerr << "-h             : Show this display" << std::endl;
   std::cerr << "-i <file>      : Load XML document and bind it as the context item" << std::endl;
