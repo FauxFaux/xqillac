@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
   const char* inputFile=NULL, *outputFile=NULL, *host=NULL, *baseURIDir=NULL;
   bool bRemoteDebug=false;
   bool quiet = false;
-  bool xpathMode = false;
+  XQilla::Language language = XQilla::XQUERY;
   bool xpathCompatible = false;
   int numberOfTimes = 1;
 
@@ -141,12 +141,12 @@ int main(int argc, char *argv[])
         quiet = true;
       }
       else if(argv[i][1] == 'p') {
-        xpathMode = true;
+        language = XQilla::XPATH2;
       }
       else if(argv[i][1] == 'P') {
         // You can't use xpath 1 compatibility in
         // XQuery mode.
-        xpathMode = true;
+        language = XQilla::XPATH2;
         xpathCompatible = true;
       }
       else {
@@ -205,12 +205,7 @@ int main(int argc, char *argv[])
         context->enableDebugging(true);
       }
 
-      if(xpathMode) {
-        parsedQueries.push_back(xqilla.parseXPath2FromURI(X(*it1), context.release()));
-      }
-      else {
-        parsedQueries.push_back(xqilla.parseXQueryFromURI(X(*it1), context.release()));
-      }
+      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), language, context.release()));
     }
 
     for(int count = numberOfTimes; count > 0; --count) {
