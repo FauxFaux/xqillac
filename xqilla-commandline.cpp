@@ -20,6 +20,7 @@
 //XQilla includes
 #include <xqilla/xqilla-simple.hpp>
 #include <xqilla/context/impl/XQRemoteDebugger.hpp>
+#include <xqilla/utils/PrintAST.hpp>
 
 #if defined(XERCES_HAS_CPP_NAMESPACE)
 XERCES_CPP_NAMESPACE_USE
@@ -49,6 +50,9 @@ public:
 
   void push_back(XQQuery *query) {
     queries_.push_back(query);
+  }
+  const XQQuery *back() const {
+    return queries_.back();
   }
 
   iterator begin() {
@@ -82,6 +86,7 @@ int main(int argc, char *argv[])
   XQilla::Language language = XQilla::XQUERY;
   bool xpathCompatible = false;
   int numberOfTimes = 1;
+  bool printAST = false;
 
   for(int i = 1; i < argc; ++i) {
     if(*argv[i] == '-' && argv[i][2] == '\0' ){
@@ -149,6 +154,9 @@ int main(int argc, char *argv[])
         language = XQilla::XPATH2;
         xpathCompatible = true;
       }
+      else if(argv[i][1] == 't') {
+        printAST = true;
+      }
       else {
         usage(argv[0]);
         return 1;
@@ -173,7 +181,8 @@ int main(int argc, char *argv[])
     QueryStore parsedQueries;
     for(std::vector<char*>::iterator it1 = queries.begin();
         it1 != queries.end(); ++it1) {
-      Janitor<DynamicContext> context(xqilla.createContext());
+      Janitor<DynamicContext> contextGuard(xqilla.createContext());
+      DynamicContext *context = contextGuard.get();
 
       // the DynamicContext has set the baseURI to the current file
       // we override to a user-specified value, or to the same directory as the
@@ -205,7 +214,11 @@ int main(int argc, char *argv[])
         context->enableDebugging(true);
       }
 
-      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), language, context.release()));
+      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), language, contextGuard.release()));
+
+      if(printAST) {
+        std::cerr << PrintAST::print(parsedQueries.back(), context) << std::endl;
+      }
     }
 
     for(int count = numberOfTimes; count > 0; --count) {
@@ -226,7 +239,7 @@ int main(int argc, char *argv[])
         time_t now;
         dynamic_context->setCurrentTime(time(&now));
 
-        Result result = (*it2)->execute(dynamic_context.get()).toSequence(dynamic_context.get());
+        Result result = (*it2)->execute(dynamic_context.get())->toSequence(dynamic_context.get());
         ++executionCount;
 
         if(outputFile != NULL || !quiet) {
@@ -243,7 +256,7 @@ int main(int argc, char *argv[])
           formatter << XMLFormatter::NoEscapes << XMLFormatter::UnRep_CharRef;
 
           Item::Ptr item;
-          while((item = result.next(dynamic_context.get())) != NULLRCP) {
+          while((item = result->next(dynamic_context.get())) != NULLRCP) {
             formatter << item->asString(dynamic_context.get()) << (XMLCh)'\n';
           }
         }
@@ -290,4 +303,5 @@ void usage(const char *progname)
   std::cerr << "-p             : Parse in XPath 2 mode (default is XQuery mode)" << std::endl;
   std::cerr << "-P             : Parse in XPath 1.0 compatibility mode (default is XQuery mode)" << std::endl;
   std::cerr << "-q             : Quiet mode - no output" << std::endl;
+  std::cerr << "-t             : Output an XML representation of the AST" << std::endl;
 }
