@@ -145,8 +145,17 @@ int main(int argc, char *argv[])
       else if(argv[i][1] == 'q') {
         quiet = true;
       }
+      else if(argv[i][1] == 'f') {
+        if(language == XQilla::XQUERY)
+          language = XQilla::XQUERY_FULLTEXT;
+        else if(language == XQilla::XPATH2)
+          language = XQilla::XPATH2_FULLTEXT;
+      }
       else if(argv[i][1] == 'p') {
-        language = XQilla::XPATH2;
+        if(language == XQilla::XQUERY)
+          language = XQilla::XPATH2;
+        else if(language == XQilla::XQUERY_FULLTEXT)
+          language = XQilla::XPATH2_FULLTEXT;
       }
       else if(argv[i][1] == 'P') {
         // You can't use xpath 1 compatibility in
@@ -296,6 +305,7 @@ void usage(const char *progname)
   std::cerr << "Usage: " << name << " [options] <XQuery file>..." << std::endl << std::endl;
   std::cerr << "-b <baseURI>   : Set the base URI for the context" << std::endl;
   std::cerr << "-d <host:port> : Enable remote debugging" << std::endl;
+  std::cerr << "-f             : Parse in XQuery Full-Text mode (default is XQuery mode)" << std::endl;
   std::cerr << "-h             : Show this display" << std::endl;
   std::cerr << "-i <file>      : Load XML document and bind it as the context item" << std::endl;
   std::cerr << "-n <number>    : Run the queries a number of times" << std::endl;
