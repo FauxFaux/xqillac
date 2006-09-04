@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
         Janitor<DynamicContext> dynamic_context((*it2)->createDynamicContext());
         if(inputFile != NULL) {
           // if an XML file was specified
-          Sequence seq=dynamic_context->resolveDocument(X(inputFile));
+          Sequence seq=dynamic_context->resolveDocument(X(inputFile), 0);
           if(!seq.isEmpty() && seq.first()->isNode()) {
             dynamic_context->setContextItem(seq.first());
             dynamic_context->setContextPosition(1);
@@ -276,6 +276,7 @@ int main(int argc, char *argv[])
   catch(XQException &e) {
     std::cerr << "Caught XQException:" << std::endl << UTF8(e.getError()) << std::endl;
     std::cerr << "at " << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn() << std::endl;
+    std::cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << std::endl;
     return 1;
   }
   catch(...) {
