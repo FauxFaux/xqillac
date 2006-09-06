@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
   catch(XQException &e) {
     std::cerr << "Caught XQException:" << std::endl << UTF8(e.getError()) << std::endl;
     std::cerr << "at " << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn() << std::endl;
-    std::cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << std::endl;
+//     std::cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << std::endl;
     return 1;
   }
   catch(...) {
