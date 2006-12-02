@@ -16,9 +16,12 @@
 
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
+#include <xercesc/util/XMLUri.hpp>
 
 //XQilla includes
 #include <xqilla/xqilla-simple.hpp>
+#include <xqilla/ast/LocationInfo.hpp>
+#include <xqilla/context/MessageListener.hpp>
 #include <xqilla/context/impl/XQRemoteDebugger.hpp>
 #include <xqilla/utils/PrintAST.hpp>
 
@@ -35,6 +38,40 @@ XERCES_CPP_NAMESPACE_USE
 
 /** Print usage */
 void usage(const char *progname);
+
+class MessageListenerImpl : public MessageListener
+{
+public:
+  virtual void warning(const XMLCh *message, const LocationInfo *location)
+  {
+    std::cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
+              << ": warning: " << UTF8(message) << std::endl;
+  }
+
+  virtual void trace(const XMLCh *label, const Sequence &sequence, const LocationInfo *location, const DynamicContext *context)
+  {
+    std::cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
+              << ": trace: " << UTF8(label) << " ";
+
+    unsigned int len = sequence.getLength();
+    if(len == 1) {
+      std::cerr << UTF8(sequence.first()->asString(context));
+    }
+    else if(len > 1) {
+      std::cerr << "(";
+      Sequence::const_iterator i = sequence.begin();
+      Sequence::const_iterator end = sequence.end();
+      while(i != end) {
+        std::cerr << UTF8((*i)->asString(context));
+        if(++i != end)
+          std::cerr << ",";
+      }
+      std::cerr << ")";
+    }
+    std::cerr << std::endl;
+  }
+
+};
 
 class QueryStore
 {
@@ -83,7 +120,7 @@ int main(int argc, char *argv[])
   const char* inputFile=NULL, *outputFile=NULL, *host=NULL, *baseURIDir=NULL;
   bool bRemoteDebug=false;
   bool quiet = false;
-  XQilla::Language language = XQilla::XQUERY;
+  int language = XQilla::XQUERY;
   bool xpathCompatible = false;
   int numberOfTimes = 1;
   bool printAST = false;
@@ -146,21 +183,18 @@ int main(int argc, char *argv[])
         quiet = true;
       }
       else if(argv[i][1] == 'f') {
-        if(language == XQilla::XQUERY)
-          language = XQilla::XQUERY_FULLTEXT;
-        else if(language == XQilla::XPATH2)
-          language = XQilla::XPATH2_FULLTEXT;
+        language |= XQilla::FULLTEXT;
+      }
+      else if(argv[i][1] == 'u') {
+        language |= XQilla::UPDATE;
       }
       else if(argv[i][1] == 'p') {
-        if(language == XQilla::XQUERY)
-          language = XQilla::XPATH2;
-        else if(language == XQilla::XQUERY_FULLTEXT)
-          language = XQilla::XPATH2_FULLTEXT;
+        language |= XQilla::XPATH2;
       }
       else if(argv[i][1] == 'P') {
         // You can't use xpath 1 compatibility in
         // XQuery mode.
-        language = XQilla::XPATH2;
+        language |= XQilla::XPATH2;
         xpathCompatible = true;
       }
       else if(argv[i][1] == 't') {
@@ -184,13 +218,14 @@ int main(int argc, char *argv[])
 
   // Create the XQilla object
   XQilla xqilla;
+  MessageListenerImpl mlistener;
 
   int executionCount = 0;
   try {
     QueryStore parsedQueries;
     for(std::vector<char*>::iterator it1 = queries.begin();
         it1 != queries.end(); ++it1) {
-      Janitor<DynamicContext> contextGuard(xqilla.createContext());
+      Janitor<DynamicContext> contextGuard(xqilla.createContext((XQilla::Language)language));
       DynamicContext *context = contextGuard.get();
 
       // the DynamicContext has set the baseURI to the current file
@@ -204,26 +239,27 @@ int main(int argc, char *argv[])
         char *pwd = ::getenv("PWD");
         if(pwd != NULL) {
           std::string queryPath(*it1);
-          size_t idx = queryPath.rfind('/');
-          if(idx != std::string::npos) {
-            std::string baseURI = std::string("file:");
-            baseURI += std::string(pwd);
-            baseURI += std::string(1, '/');
-            baseURI += queryPath.substr(0, idx);
-            baseURI += std::string(1, '/');
-            context->setBaseURI(X(baseURI.c_str()));
-          }
+
+          std::string baseURI = std::string("file://");
+          baseURI += std::string(pwd);
+          baseURI += std::string(1, '/');
+
+          XMLUri base(X(baseURI.c_str()));
+          XMLUri resolved(&base, X(queryPath.c_str()));
+
+          context->setBaseURI(resolved.getUriText());
         }
       }
 
       context->setXPath1CompatibilityMode(xpathCompatible);
+      context->setMessageListener(&mlistener);
 
       if(bRemoteDebug) {
         context->setDebugCallback(new (context->getMemoryManager()) XQRemoteDebugger(X(host), context->getMemoryManager()));
         context->enableDebugging(true);
       }
 
-      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), language, contextGuard.release()));
+      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), (XQilla::Language)language, contextGuard.release()));
 
       if(printAST) {
         std::cerr << PrintAST::print(parsedQueries.back(), context) << std::endl;
@@ -274,8 +310,8 @@ int main(int argc, char *argv[])
     }
   }
   catch(XQException &e) {
-    std::cerr << "Caught XQException:" << std::endl << UTF8(e.getError()) << std::endl;
-    std::cerr << "at " << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn() << std::endl;
+    std::cerr << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn()
+              << ": error: " << UTF8(e.getError()) << std::endl;
 //     std::cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << std::endl;
     return 1;
   }
@@ -306,7 +342,8 @@ void usage(const char *progname)
   std::cerr << "Usage: " << name << " [options] <XQuery file>..." << std::endl << std::endl;
   std::cerr << "-b <baseURI>   : Set the base URI for the context" << std::endl;
   std::cerr << "-d <host:port> : Enable remote debugging" << std::endl;
-  std::cerr << "-f             : Parse in XQuery Full-Text mode (default is XQuery mode)" << std::endl;
+  std::cerr << "-f             : Parse using W3C Full-Text extensions" << std::endl;
+  std::cerr << "-u             : Parse using W3C Update extensions" << std::endl;
   std::cerr << "-h             : Show this display" << std::endl;
   std::cerr << "-i <file>      : Load XML document and bind it as the context item" << std::endl;
   std::cerr << "-n <number>    : Run the queries a number of times" << std::endl;
