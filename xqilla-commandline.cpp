@@ -259,7 +259,7 @@ int main(int argc, char *argv[])
         context->enableDebugging(true);
       }
 
-      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), (XQilla::Language)language, contextGuard.release()));
+      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release()));
 
       if(printAST) {
         std::cerr << PrintAST::print(parsedQueries.back(), context) << std::endl;
