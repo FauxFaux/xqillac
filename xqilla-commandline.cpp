@@ -24,6 +24,8 @@
 #include <xqilla/context/MessageListener.hpp>
 #include <xqilla/context/impl/XQRemoteDebugger.hpp>
 #include <xqilla/utils/PrintAST.hpp>
+#include <xqilla/xerces/XercesConfiguration.hpp>
+#include <xqilla/fastxdm/FastXDMConfiguration.hpp>
 
 #if defined(XERCES_HAS_CPP_NAMESPACE)
 XERCES_CPP_NAMESPACE_USE
@@ -125,6 +127,10 @@ int main(int argc, char *argv[])
   int numberOfTimes = 1;
   bool printAST = false;
 
+  XercesConfiguration xercesConf;
+  FastXDMConfiguration fastConf;
+  XQillaConfiguration *conf = &fastConf;
+
   for(int i = 1; i < argc; ++i) {
     if(*argv[i] == '-' && argv[i][2] == '\0' ){
 
@@ -187,6 +193,7 @@ int main(int argc, char *argv[])
       }
       else if(argv[i][1] == 'u') {
         language |= XQilla::UPDATE;
+        conf = &xercesConf;
       }
       else if(argv[i][1] == 'p') {
         language |= XQilla::XPATH2;
@@ -199,6 +206,9 @@ int main(int argc, char *argv[])
       }
       else if(argv[i][1] == 't') {
         printAST = true;
+      }
+      else if(argv[i][1] == 'x') {
+        conf = &xercesConf;
       }
       else {
         usage(argv[0]);
@@ -225,7 +235,7 @@ int main(int argc, char *argv[])
     QueryStore parsedQueries;
     for(std::vector<char*>::iterator it1 = queries.begin();
         it1 != queries.end(); ++it1) {
-      Janitor<DynamicContext> contextGuard(xqilla.createContext((XQilla::Language)language));
+      Janitor<DynamicContext> contextGuard(xqilla.createContext((XQilla::Language)language, conf));
       DynamicContext *context = contextGuard.get();
 
       // the DynamicContext has set the baseURI to the current file
@@ -352,4 +362,5 @@ void usage(const char *progname)
   std::cerr << "-P             : Parse in XPath 1.0 compatibility mode (default is XQuery mode)" << std::endl;
   std::cerr << "-q             : Quiet mode - no output" << std::endl;
   std::cerr << "-t             : Output an XML representation of the AST" << std::endl;
+  std::cerr << "-x             : Use the Xerces-C data model (default is the FastXDM)" << std::endl;
 }
