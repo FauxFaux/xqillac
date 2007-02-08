@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
         outputFile=argv[i];
       }
       else if(argv[i][1] == 'd') {
+        conf = &xercesConf;
         bRemoteDebug=true;
         i++;
         if(i==argc)
