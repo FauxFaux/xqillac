@@ -24,6 +24,8 @@
 #include <xqilla/context/MessageListener.hpp>
 #include <xqilla/context/impl/XQRemoteDebugger.hpp>
 #include <xqilla/utils/PrintAST.hpp>
+#include <xqilla/events/EventSerializer.hpp>
+#include <xqilla/events/NSFixupFilter.hpp>
 #include <xqilla/xerces/XercesConfiguration.hpp>
 #include <xqilla/fastxdm/FastXDMConfiguration.hpp>
 
@@ -294,10 +296,12 @@ int main(int argc, char *argv[])
         time_t now;
         dynamic_context->setCurrentTime(time(&now));
 
-        Result result = (*it2)->execute(dynamic_context.get())->toSequence(dynamic_context.get());
         ++executionCount;
 
-        if(outputFile != NULL || !quiet) {
+        if(quiet) {
+          (*it2)->execute(dynamic_context.get())->toSequence(dynamic_context.get());
+        }
+        else {
           // use STDOUT if a file was not specified
           Janitor<XMLFormatTarget> target(0);
           if(outputFile != NULL) {
@@ -306,16 +310,11 @@ int main(int argc, char *argv[])
             target.reset(new StdOutFormatTarget());
           }
 
-          // assume UTF8
-          XMLFormatter formatter(XMLUni::fgUTF8EncodingString, target.get());
-          formatter << XMLFormatter::NoEscapes << XMLFormatter::UnRep_CharRef;
-
-          Item::Ptr item;
-          while((item = result->next(dynamic_context.get())) != NULLRCP) {
-            formatter << item->asString(dynamic_context.get()) << (XMLCh)'\n';
-          }
+          EventSerializer writer("UTF-8", "1.1", target.get(), dynamic_context->getMemoryManager());
+	  writer.addNewlines(true);
+          NSFixupFilter nsfilter(&writer, dynamic_context->getMemoryManager());
+          (*it2)->execute(&nsfilter, dynamic_context.get());
         }
-
       }
     }
   }
