@@ -22,7 +22,6 @@
 #include <xqilla/xqilla-simple.hpp>
 #include <xqilla/ast/LocationInfo.hpp>
 #include <xqilla/context/MessageListener.hpp>
-#include <xqilla/context/impl/XQRemoteDebugger.hpp>
 #include <xqilla/utils/PrintAST.hpp>
 #include <xqilla/events/EventSerializer.hpp>
 #include <xqilla/events/NSFixupFilter.hpp>
@@ -121,8 +120,7 @@ int main(int argc, char *argv[])
   // First we parse the command line arguments
   std::vector<char *> queries;
 
-  const char* inputFile=NULL, *outputFile=NULL, *host=NULL, *baseURIDir=NULL;
-  bool bRemoteDebug=false;
+  const char* inputFile=NULL, *outputFile=NULL, *baseURIDir=NULL;
   bool quiet = false;
   int language = XQilla::XQUERY;
   bool xpathCompatible = false;
@@ -167,17 +165,6 @@ int main(int argc, char *argv[])
           return 1;
         }
         outputFile=argv[i];
-      }
-      else if(argv[i][1] == 'd') {
-        conf = &xercesConf;
-        bRemoteDebug=true;
-        i++;
-        if(i==argc)
-        {
-          std::cerr << "Missing argument to option 'd'" << std::endl;
-          return 1;
-        }
-        host=argv[i];
       }
       else if(argv[i][1] == 'n') {
         i++;
@@ -267,11 +254,6 @@ int main(int argc, char *argv[])
       context->setXPath1CompatibilityMode(xpathCompatible);
       context->setMessageListener(&mlistener);
 
-      if(bRemoteDebug) {
-        context->setDebugCallback(new (context->getMemoryManager()) XQRemoteDebugger(X(host), context->getMemoryManager()));
-        context->enableDebugging(true);
-      }
-
       parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release()));
 
       if(printAST) {
@@ -351,7 +333,6 @@ void usage(const char *progname)
 
   std::cerr << "Usage: " << name << " [options] <XQuery file>..." << std::endl << std::endl;
   std::cerr << "-b <baseURI>   : Set the base URI for the context" << std::endl;
-  std::cerr << "-d <host:port> : Enable remote debugging" << std::endl;
   std::cerr << "-f             : Parse using W3C Full-Text extensions" << std::endl;
   std::cerr << "-u             : Parse using W3C Update extensions" << std::endl;
   std::cerr << "-h             : Show this display" << std::endl;
