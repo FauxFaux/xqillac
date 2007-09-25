@@ -236,7 +236,17 @@ int main(int argc, char *argv[])
       }
       else {
         // FIXME assumes UTF8, Windows portability issues?
-        char *pwd = ::getenv("PWD");
+		XMLCh *pwd = XMLPlatformUtils::getCurrentDirectory(context->getMemoryManager());
+		if(pwd != NULL){
+			XMLCh *baseURI = (XMLCh*)context->getMemoryManager()->allocate((XMLString::stringLen(pwd) + 10)*sizeof(XMLCh));
+			XMLString::fixURI(pwd, baseURI);
+			XMLString::catString(baseURI, &chForwardSlash);
+			std::string queryPath(*it1);
+			XMLUri base(baseURI);
+			XMLUri resolved(&base, X(queryPath.c_str()));
+			context->setBaseURI(resolved.getUriText());
+		}
+		/*char *pwd = ::getenv("PWD");
         if(pwd != NULL) {
           std::string queryPath(*it1);
 
@@ -248,7 +258,7 @@ int main(int argc, char *argv[])
           XMLUri resolved(&base, X(queryPath.c_str()));
 
           context->setBaseURI(resolved.getUriText());
-        }
+        }*/
       }
 
       context->setXPath1CompatibilityMode(xpathCompatible);
