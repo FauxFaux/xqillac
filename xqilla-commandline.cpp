@@ -235,30 +235,16 @@ int main(int argc, char *argv[])
         context->setBaseURI(X(baseURIDir));
       }
       else {
-        // FIXME assumes UTF8, Windows portability issues?
-		XMLCh *pwd = XMLPlatformUtils::getCurrentDirectory(context->getMemoryManager());
-		if(pwd != NULL){
-			XMLCh *baseURI = (XMLCh*)context->getMemoryManager()->allocate((XMLString::stringLen(pwd) + 10)*sizeof(XMLCh));
-			XMLString::fixURI(pwd, baseURI);
-			XMLString::catString(baseURI, &chForwardSlash);
-			std::string queryPath(*it1);
-			XMLUri base(baseURI);
-			XMLUri resolved(&base, X(queryPath.c_str()));
-			context->setBaseURI(resolved.getUriText());
-		}
-		/*char *pwd = ::getenv("PWD");
-        if(pwd != NULL) {
+        XMLCh *pwd = XMLPlatformUtils::getCurrentDirectory(context->getMemoryManager());
+        if(pwd != NULL){
+          XMLCh *baseURI = (XMLCh*)context->getMemoryManager()->allocate((XMLString::stringLen(pwd) + 10)*sizeof(XMLCh));
+          XMLString::fixURI(pwd, baseURI);
+          XMLString::catString(baseURI, &chForwardSlash);
           std::string queryPath(*it1);
-
-          std::string baseURI = std::string("file://");
-          baseURI += std::string(pwd);
-          baseURI += std::string(1, '/');
-
-          XMLUri base(X(baseURI.c_str()));
+          XMLUri base(baseURI);
           XMLUri resolved(&base, X(queryPath.c_str()));
-
           context->setBaseURI(resolved.getUriText());
-        }*/
+        }
       }
 
       context->setXPath1CompatibilityMode(xpathCompatible);
@@ -304,7 +290,7 @@ int main(int argc, char *argv[])
           }
 
           EventSerializer writer("UTF-8", "1.1", target.get(), dynamic_context->getMemoryManager());
-	  writer.addNewlines(true);
+          writer.addNewlines(true);
           NSFixupFilter nsfilter(&writer, dynamic_context->getMemoryManager());
           (*it2)->execute(&nsfilter, dynamic_context.get());
         }
