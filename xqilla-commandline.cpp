@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
@@ -32,6 +33,8 @@
 XERCES_CPP_NAMESPACE_USE
 #endif
 
+using namespace std;
+
 #define QUERY_BUFFER_SIZE 32 * 1024
 #define BASEURI_BUFFER_SIZE 2 * 1024
 
@@ -47,31 +50,31 @@ class MessageListenerImpl : public MessageListener
 public:
   virtual void warning(const XMLCh *message, const LocationInfo *location)
   {
-    std::cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
-              << ": warning: " << UTF8(message) << std::endl;
+    cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
+	 << ": warning: " << UTF8(message) << endl;
   }
 
   virtual void trace(const XMLCh *label, const Sequence &sequence, const LocationInfo *location, const DynamicContext *context)
   {
-    std::cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
-              << ": trace: " << UTF8(label) << " ";
+    cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
+	 << ": trace: " << UTF8(label) << " ";
 
     unsigned int len = sequence.getLength();
     if(len == 1) {
-      std::cerr << UTF8(sequence.first()->asString(context));
+      cerr << UTF8(sequence.first()->asString(context));
     }
     else if(len > 1) {
-      std::cerr << "(";
+      cerr << "(";
       Sequence::const_iterator i = sequence.begin();
       Sequence::const_iterator end = sequence.end();
       while(i != end) {
-        std::cerr << UTF8((*i)->asString(context));
+        cerr << UTF8((*i)->asString(context));
         if(++i != end)
-          std::cerr << ",";
+          cerr << ",";
       }
-      std::cerr << ")";
+      cerr << ")";
     }
-    std::cerr << std::endl;
+    cerr << endl;
   }
 
 };
@@ -79,8 +82,8 @@ public:
 class QueryStore
 {
 public:
-  typedef std::vector<XQQuery*>::iterator iterator;
-  typedef std::vector<XQQuery*>::const_iterator const_iterator;
+  typedef vector<XQQuery*>::iterator iterator;
+  typedef vector<XQQuery*>::const_iterator const_iterator;
 
   QueryStore() {}
   ~QueryStore() {
@@ -112,15 +115,16 @@ private:
   QueryStore(const QueryStore &);
   QueryStore &operator=(const QueryStore &);
 
-  std::vector<XQQuery*> queries_;
+  vector<XQQuery*> queries_;
 };
 
 int main(int argc, char *argv[])
 {
   // First we parse the command line arguments
-  std::vector<char *> queries;
+  vector<char *> queries;
 
   const char* inputFile=NULL, *outputFile=NULL, *baseURIDir=NULL;
+  map<string, char*> externalVars;
   bool quiet = false;
   int language = XQilla::XQUERY;
   bool xpathCompatible = false;
@@ -140,37 +144,37 @@ int main(int argc, char *argv[])
         return 0;
       }
       else if(argv[i][1] == 'i') {
-        i++;
+        ++i;
         if(i==argc)
         {
-          std::cerr << "Missing argument to option 'i'" << std::endl;
+          cerr << "Missing argument to option 'i'" << endl;
           return 1;
         }
         inputFile=argv[i];
       }
       else if(argv[i][1] == 'b') {
-        i++;
+        ++i;
         if(i==argc)
         {
-          std::cerr << "Missing argument to option 'b'" << std::endl;
+          cerr << "Missing argument to option 'b'" << endl;
           return 1;
         }
         baseURIDir=argv[i];
       }
       else if(argv[i][1] == 'o') {
-        i++;
+        ++i;
         if(i==argc)
         {
-          std::cerr << "Missing argument to option 'o'" << std::endl;
+          cerr << "Missing argument to option 'o'" << endl;
           return 1;
         }
         outputFile=argv[i];
       }
       else if(argv[i][1] == 'n') {
-        i++;
+        ++i;
         if(i==argc)
         {
-          std::cerr << "Missing argument to option 'n'" << std::endl;
+          cerr << "Missing argument to option 'n'" << endl;
           return 1;
         }
         numberOfTimes=atoi(argv[i]);
@@ -196,6 +200,15 @@ int main(int argc, char *argv[])
       }
       else if(argv[i][1] == 't') {
         printAST = true;
+      }
+      else if(argv[i][1] == 'v') {
+        ++i;
+        if((i + 1) >= argc) {
+          cerr << "Missing argument to option 'v'" << endl;
+          return 1;
+        }
+	externalVars[argv[i]] = argv[i + 1];
+	++i;
       }
       else if(argv[i][1] == 'x') {
         conf = &xercesConf;
@@ -223,7 +236,7 @@ int main(int argc, char *argv[])
   int executionCount = 0;
   try {
     QueryStore parsedQueries;
-    for(std::vector<char*>::iterator it1 = queries.begin();
+    for(vector<char*>::iterator it1 = queries.begin();
         it1 != queries.end(); ++it1) {
       Janitor<DynamicContext> contextGuard(xqilla.createContext((XQilla::Language)language, conf));
       DynamicContext *context = contextGuard.get();
@@ -240,7 +253,7 @@ int main(int argc, char *argv[])
           XMLCh *baseURI = (XMLCh*)context->getMemoryManager()->allocate((XMLString::stringLen(pwd) + 10)*sizeof(XMLCh));
           XMLString::fixURI(pwd, baseURI);
           XMLString::catString(baseURI, &chForwardSlash);
-          std::string queryPath(*it1);
+          string queryPath(*it1);
           XMLUri base(baseURI);
           XMLUri resolved(&base, X(queryPath.c_str()));
           context->setBaseURI(resolved.getUriText());
@@ -253,7 +266,7 @@ int main(int argc, char *argv[])
       parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release()));
 
       if(printAST) {
-        std::cerr << PrintAST::print(parsedQueries.back(), context) << std::endl;
+        cerr << PrintAST::print(parsedQueries.back(), context) << endl;
       }
     }
 
@@ -272,6 +285,14 @@ int main(int argc, char *argv[])
             dynamic_context->setContextSize(1);
           }
         }
+
+	// Set the external variable values
+	map<string, char*>::iterator v = externalVars.begin();
+	for(; v != externalVars.end(); ++v) {
+		Item::Ptr value = dynamic_context->getItemFactory()->createString(X(v->second), dynamic_context.get());
+		dynamic_context->setExternalVariable(X(v->first.c_str()), value);
+	}
+
         time_t now;
         dynamic_context->setCurrentTime(time(&now));
 
@@ -298,17 +319,17 @@ int main(int argc, char *argv[])
     }
   }
   catch(XQException &e) {
-    std::cerr << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn()
-              << ": error: " << UTF8(e.getError()) << std::endl;
-//     std::cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << std::endl;
+    cerr << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn()
+	 << ": error: " << UTF8(e.getError()) << endl;
+//     cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << endl;
     return 1;
   }
   catch(...) {
-    std::cerr << "Caught unknown exception" << std::endl;
+    cerr << "Caught unknown exception" << endl;
     return 1;
   }
 
-  if(quiet) std::cout << "Executions: " << executionCount << std::endl;
+  if(quiet) cout << "Executions: " << executionCount << endl;
 
   // clean up and exit
   return 0;
@@ -327,17 +348,18 @@ void usage(const char *progname)
     }
   }
 
-  std::cerr << "Usage: " << name << " [options] <XQuery file>..." << std::endl << std::endl;
-  std::cerr << "-b <baseURI>   : Set the base URI for the context" << std::endl;
-  std::cerr << "-f             : Parse using W3C Full-Text extensions" << std::endl;
-  std::cerr << "-u             : Parse using W3C Update extensions" << std::endl;
-  std::cerr << "-h             : Show this display" << std::endl;
-  std::cerr << "-i <file>      : Load XML document and bind it as the context item" << std::endl;
-  std::cerr << "-n <number>    : Run the queries a number of times" << std::endl;
-  std::cerr << "-o <file>      : Write the result to the specified file" << std::endl;
-  std::cerr << "-p             : Parse in XPath 2 mode (default is XQuery mode)" << std::endl;
-  std::cerr << "-P             : Parse in XPath 1.0 compatibility mode (default is XQuery mode)" << std::endl;
-  std::cerr << "-q             : Quiet mode - no output" << std::endl;
-  std::cerr << "-t             : Output an XML representation of the AST" << std::endl;
-  std::cerr << "-x             : Use the Xerces-C data model (default is the FastXDM)" << std::endl;
+  cerr << "Usage: " << name << " [options] <XQuery file>..." << endl << endl;
+  cerr << "-b <baseURI>      : Set the base URI for the context" << endl;
+  cerr << "-f                : Parse using W3C Full-Text extensions" << endl;
+  cerr << "-u                : Parse using W3C Update extensions" << endl;
+  cerr << "-h                : Show this display" << endl;
+  cerr << "-i <file>         : Load XML document and bind it as the context item" << endl;
+  cerr << "-n <number>       : Run the queries a number of times" << endl;
+  cerr << "-o <file>         : Write the result to the specified file" << endl;
+  cerr << "-p                : Parse in XPath 2 mode (default is XQuery mode)" << endl;
+  cerr << "-P                : Parse in XPath 1.0 compatibility mode (default is XQuery mode)" << endl;
+  cerr << "-q                : Quiet mode - no output" << endl;
+  cerr << "-t                : Output an XML representation of the AST" << endl;
+  cerr << "-v <name> <value> : Bind the name value pair as an external variable" << endl;
+  cerr << "-x                : Use the Xerces-C data model (default is the FastXDM)" << endl;
 }
