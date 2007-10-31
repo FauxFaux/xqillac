@@ -59,7 +59,7 @@ public:
     cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
 	 << ": trace: " << UTF8(label) << " ";
 
-    unsigned int len = sequence.getLength();
+    size_t len = sequence.getLength();
     if(len == 1) {
       cerr << UTF8(sequence.first()->asString(context));
     }
