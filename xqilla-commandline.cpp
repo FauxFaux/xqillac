@@ -29,13 +29,7 @@
 
 //XQilla includes
 #include <xqilla/xqilla-simple.hpp>
-#include <xqilla/ast/LocationInfo.hpp>
-#include <xqilla/context/MessageListener.hpp>
 #include <xqilla/utils/PrintAST.hpp>
-#include <xqilla/events/EventSerializer.hpp>
-#include <xqilla/events/NSFixupFilter.hpp>
-#include <xqilla/xerces/XercesConfiguration.hpp>
-#include <xqilla/fastxdm/FastXDMConfiguration.hpp>
 
 #if defined(XERCES_HAS_CPP_NAMESPACE)
 XERCES_CPP_NAMESPACE_USE
