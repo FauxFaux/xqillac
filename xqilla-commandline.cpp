@@ -191,6 +191,9 @@ int main(int argc, char *argv[])
         language |= XQilla::UPDATE;
         conf = &xercesConf;
       }
+      else if(argv[i][1] == 'e') {
+        language |= XQilla::EXTENSIONS;
+      }
       else if(argv[i][1] == 'p') {
         language |= XQilla::XPATH2;
       }
@@ -199,6 +202,9 @@ int main(int argc, char *argv[])
         // XQuery mode.
         language |= XQilla::XPATH2;
         xpathCompatible = true;
+      }
+      else if(argv[i][1] == 's') {
+        language |= XQilla::XSLT2;
       }
       else if(argv[i][1] == 't') {
         printAST = true;
@@ -280,7 +286,7 @@ int main(int argc, char *argv[])
         Janitor<DynamicContext> dynamic_context((*it2)->createDynamicContext());
         if(inputFile != NULL) {
           // if an XML file was specified
-          Sequence seq=dynamic_context->resolveDocument(X(inputFile), 0);
+          Sequence seq = dynamic_context->resolveDocument(X(inputFile), 0);
           if(!seq.isEmpty() && seq.first()->isNode()) {
             dynamic_context->setContextItem(seq.first());
             dynamic_context->setContextPosition(1);
@@ -291,7 +297,7 @@ int main(int argc, char *argv[])
 	// Set the external variable values
 	map<string, char*>::iterator v = externalVars.begin();
 	for(; v != externalVars.end(); ++v) {
-		Item::Ptr value = dynamic_context->getItemFactory()->createString(X(v->second), dynamic_context.get());
+		Item::Ptr value = dynamic_context->getItemFactory()->createUntypedAtomic(X(v->second), dynamic_context.get());
 		dynamic_context->setExternalVariable(X(v->first.c_str()), value);
 	}
 
@@ -351,17 +357,19 @@ void usage(const char *progname)
   }
 
   cerr << "Usage: " << name << " [options] <XQuery file>..." << endl << endl;
-  cerr << "-b <baseURI>      : Set the base URI for the context" << endl;
-  cerr << "-f                : Parse using W3C Full-Text extensions" << endl;
-  cerr << "-u                : Parse using W3C Update extensions" << endl;
   cerr << "-h                : Show this display" << endl;
-  cerr << "-i <file>         : Load XML document and bind it as the context item" << endl;
-  cerr << "-n <number>       : Run the queries a number of times" << endl;
-  cerr << "-o <file>         : Write the result to the specified file" << endl;
   cerr << "-p                : Parse in XPath 2 mode (default is XQuery mode)" << endl;
   cerr << "-P                : Parse in XPath 1.0 compatibility mode (default is XQuery mode)" << endl;
+  cerr << "-s                : Parse XSLT 2.0" << endl;
+  cerr << "-f                : Parse using W3C Full-Text extensions" << endl;
+  cerr << "-u                : Parse using W3C Update extensions" << endl;
+  cerr << "-e                : Parse using XQilla specific extensions" << endl;
+  cerr << "-x                : Use the Xerces-C data model (default is the FastXDM)" << endl;
+  cerr << "-i <file>         : Load XML document and bind it as the context item" << endl;
+  cerr << "-b <baseURI>      : Set the base URI for the context" << endl;
+  cerr << "-v <name> <value> : Bind the name value pair as an external variable" << endl;
+  cerr << "-o <file>         : Write the result to the specified file" << endl;
+  cerr << "-n <number>       : Run the queries a number of times" << endl;
   cerr << "-q                : Quiet mode - no output" << endl;
   cerr << "-t                : Output an XML representation of the AST" << endl;
-  cerr << "-v <name> <value> : Bind the name value pair as an external variable" << endl;
-  cerr << "-x                : Use the Xerces-C data model (default is the FastXDM)" << endl;
 }
