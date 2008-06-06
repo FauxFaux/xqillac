@@ -53,13 +53,13 @@ public:
   virtual void warning(const XMLCh *message, const LocationInfo *location)
   {
     cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
-	 << ": warning: " << UTF8(message) << endl;
+         << ": warning: " << UTF8(message) << endl;
   }
 
   virtual void trace(const XMLCh *label, const Sequence &sequence, const LocationInfo *location, const DynamicContext *context)
   {
     cerr << UTF8(location->getFile()) << ":" << location->getLine() << ":" << location->getColumn()
-	 << ": trace: " << UTF8(label) << " ";
+         << ": trace: " << UTF8(label) << " ";
 
     size_t len = sequence.getLength();
     if(len == 1) {
@@ -119,6 +119,8 @@ private:
 
   vector<XQQuery*> queries_;
 };
+
+static const XMLCh fwdSlashStr[] = { '/', 0 };
 
 int main(int argc, char *argv[])
 {
@@ -215,8 +217,8 @@ int main(int argc, char *argv[])
           cerr << "Missing argument to option 'v'" << endl;
           return 1;
         }
-	externalVars[argv[i]] = argv[i + 1];
-	++i;
+        externalVars[argv[i]] = argv[i + 1];
+        ++i;
       }
       else if(argv[i][1] == 'x') {
         conf = &xercesConf;
@@ -260,7 +262,7 @@ int main(int argc, char *argv[])
         if(pwd != NULL){
           XMLCh *baseURI = (XMLCh*)context->getMemoryManager()->allocate((XMLString::stringLen(pwd) + 10)*sizeof(XMLCh));
           XMLString::fixURI(pwd, baseURI);
-          XMLString::catString(baseURI, &chForwardSlash);
+          XMLString::catString(baseURI, fwdSlashStr);
           string queryPath(*it1);
           XMLUri base(baseURI);
           XMLUri resolved(&base, X(queryPath.c_str()));
@@ -294,12 +296,12 @@ int main(int argc, char *argv[])
           }
         }
 
-	// Set the external variable values
-	map<string, char*>::iterator v = externalVars.begin();
-	for(; v != externalVars.end(); ++v) {
-		Item::Ptr value = dynamic_context->getItemFactory()->createUntypedAtomic(X(v->second), dynamic_context.get());
-		dynamic_context->setExternalVariable(X(v->first.c_str()), value);
-	}
+        // Set the external variable values
+        map<string, char*>::iterator v = externalVars.begin();
+        for(; v != externalVars.end(); ++v) {
+          Item::Ptr value = dynamic_context->getItemFactory()->createUntypedAtomic(X(v->second), dynamic_context.get());
+          dynamic_context->setExternalVariable(X(v->first.c_str()), value);
+        }
 
         time_t now;
         dynamic_context->setCurrentTime(time(&now));
@@ -328,7 +330,7 @@ int main(int argc, char *argv[])
   }
   catch(XQException &e) {
     cerr << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn()
-	 << ": error: " << UTF8(e.getError()) << endl;
+         << ": error: " << UTF8(e.getError()) << endl;
 //     cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << endl;
     return 1;
   }
