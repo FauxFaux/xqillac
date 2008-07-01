@@ -31,6 +31,8 @@
 #include <xqilla/xqilla-simple.hpp>
 #include <xqilla/utils/PrintAST.hpp>
 
+#include <xqilla/debug/InteractiveDebugger.hpp>
+
 #if defined(XERCES_HAS_CPP_NAMESPACE)
 XERCES_CPP_NAMESPACE_USE
 #endif
@@ -122,22 +124,65 @@ private:
 
 static const XMLCh fwdSlashStr[] = { '/', 0 };
 
+struct CommandLineArgs
+{
+  CommandLineArgs()
+    : inputFile(0),
+      outputFile(0),
+      baseURIDir(0),
+      conf(&fastConf),
+      language(XQilla::XQUERY),
+      parseFlags(0),
+      xpathCompatible(false),
+      quiet(false),
+      printAST(false),
+      iDebug(false),
+      numberOfTimes(1)
+  {
+  }
+
+  void check(const char *progname)
+  {
+    if(queries.empty()) {
+      usage(progname);
+      exit(1);
+    }
+
+    if(iDebug) {
+      if(queries.size() > 1) {
+        cerr << "Only one query can be debugged in interactive debugging mode." << endl;
+        exit(1);
+      }
+      if(numberOfTimes != 1) {
+        cerr << "The query can only be run once in interactive debugging mode." << endl;
+        exit(1);
+      }
+    }
+  }
+
+  vector<char *> queries;
+  const char *inputFile, *outputFile, *baseURIDir;
+  map<string, char*> externalVars;
+  XQillaConfiguration *conf;
+  int language;
+  unsigned int parseFlags;
+  bool xpathCompatible;
+  bool quiet;
+  bool printAST;
+  bool iDebug;
+  int numberOfTimes;
+
+  static XercesConfiguration xercesConf;
+  static FastXDMConfiguration fastConf;
+};
+
+XercesConfiguration CommandLineArgs::xercesConf;
+FastXDMConfiguration CommandLineArgs::fastConf;
+
 int main(int argc, char *argv[])
 {
   // First we parse the command line arguments
-  vector<char *> queries;
-
-  const char* inputFile=NULL, *outputFile=NULL, *baseURIDir=NULL;
-  map<string, char*> externalVars;
-  bool quiet = false;
-  int language = XQilla::XQUERY;
-  bool xpathCompatible = false;
-  int numberOfTimes = 1;
-  bool printAST = false;
-
-  XercesConfiguration xercesConf;
-  FastXDMConfiguration fastConf;
-  XQillaConfiguration *conf = &fastConf;
+  CommandLineArgs args;
 
   for(int i = 1; i < argc; ++i) {
     if(*argv[i] == '-' && argv[i][2] == '\0' ){
@@ -154,7 +199,7 @@ int main(int argc, char *argv[])
           cerr << "Missing argument to option 'i'" << endl;
           return 1;
         }
-        inputFile=argv[i];
+        args.inputFile = argv[i];
       }
       else if(argv[i][1] == 'b') {
         ++i;
@@ -163,7 +208,7 @@ int main(int argc, char *argv[])
           cerr << "Missing argument to option 'b'" << endl;
           return 1;
         }
-        baseURIDir=argv[i];
+        args.baseURIDir = argv[i];
       }
       else if(argv[i][1] == 'o') {
         ++i;
@@ -172,7 +217,7 @@ int main(int argc, char *argv[])
           cerr << "Missing argument to option 'o'" << endl;
           return 1;
         }
-        outputFile=argv[i];
+        args.outputFile = argv[i];
       }
       else if(argv[i][1] == 'n') {
         ++i;
@@ -181,35 +226,35 @@ int main(int argc, char *argv[])
           cerr << "Missing argument to option 'n'" << endl;
           return 1;
         }
-        numberOfTimes=atoi(argv[i]);
+        args.numberOfTimes = atoi(argv[i]);
       }
       else if(argv[i][1] == 'q') {
-        quiet = true;
+        args.quiet = true;
       }
       else if(argv[i][1] == 'f') {
-        language |= XQilla::FULLTEXT;
+        args.language |= XQilla::FULLTEXT;
       }
       else if(argv[i][1] == 'u') {
-        language |= XQilla::UPDATE;
-        conf = &xercesConf;
+        args.language |= XQilla::UPDATE;
+        args.conf = &CommandLineArgs::xercesConf;
       }
       else if(argv[i][1] == 'e') {
-        language |= XQilla::EXTENSIONS;
+        args.language |= XQilla::EXTENSIONS;
       }
       else if(argv[i][1] == 'p') {
-        language |= XQilla::XPATH2;
+        args.language |= XQilla::XPATH2;
       }
       else if(argv[i][1] == 'P') {
         // You can't use xpath 1 compatibility in
         // XQuery mode.
-        language |= XQilla::XPATH2;
-        xpathCompatible = true;
+        args.language |= XQilla::XPATH2;
+        args.xpathCompatible = true;
       }
       else if(argv[i][1] == 's') {
-        language |= XQilla::XSLT2;
+        args.language |= XQilla::XSLT2;
       }
       else if(argv[i][1] == 't') {
-        printAST = true;
+        args.printAST = true;
       }
       else if(argv[i][1] == 'v') {
         ++i;
@@ -217,11 +262,15 @@ int main(int argc, char *argv[])
           cerr << "Missing argument to option 'v'" << endl;
           return 1;
         }
-        externalVars[argv[i]] = argv[i + 1];
+        args.externalVars[argv[i]] = argv[i + 1];
         ++i;
       }
       else if(argv[i][1] == 'x') {
-        conf = &xercesConf;
+        args.conf = &CommandLineArgs::xercesConf;
+      }
+      else if(argv[i][1] == 'd') {
+        args.iDebug = true;
+        args.parseFlags |= XQilla::DEBUG_QUERY;
       }
       else {
         usage(argv[0]);
@@ -229,15 +278,12 @@ int main(int argc, char *argv[])
       }
     }
     else {
-      queries.push_back(argv[i]);
+      args.queries.push_back(argv[i]);
     }
   }
 
   // Check for bad command line arguments
-  if(queries.empty()) {
-    usage(argv[0]);
-    return 1;
-  }
+  args.check(argv[0]);
 
   // Create the XQilla object
   XQilla xqilla;
@@ -246,16 +292,16 @@ int main(int argc, char *argv[])
   int executionCount = 0;
   try {
     QueryStore parsedQueries;
-    for(vector<char*>::iterator it1 = queries.begin();
-        it1 != queries.end(); ++it1) {
-      Janitor<DynamicContext> contextGuard(xqilla.createContext((XQilla::Language)language, conf));
+    for(vector<char*>::iterator it1 = args.queries.begin();
+        it1 != args.queries.end(); ++it1) {
+      Janitor<DynamicContext> contextGuard(xqilla.createContext((XQilla::Language)args.language, args.conf));
       DynamicContext *context = contextGuard.get();
 
       // the DynamicContext has set the baseURI to the current file
       // we override to a user-specified value, or to the same directory as the
       // query (current file)
-      if(baseURIDir != NULL) {
-        context->setBaseURI(X(baseURIDir));
+      if(args.baseURIDir != NULL) {
+        context->setBaseURI(X(args.baseURIDir));
       }
       else {
         XMLCh *pwd = XMLPlatformUtils::getCurrentDirectory(context->getMemoryManager());
@@ -270,25 +316,26 @@ int main(int argc, char *argv[])
         }
       }
 
-      context->setXPath1CompatibilityMode(xpathCompatible);
+      context->setXPath1CompatibilityMode(args.xpathCompatible);
       context->setMessageListener(&mlistener);
 
-      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release()));
+      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release(), args.parseFlags));
 
-      if(printAST) {
+      if(args.printAST) {
         cerr << PrintAST::print(parsedQueries.back(), context) << endl;
       }
     }
 
-    for(int count = numberOfTimes; count > 0; --count) {
+    for(int count = args.numberOfTimes; count > 0; --count) {
 
       for(QueryStore::const_iterator it2 = parsedQueries.begin();
           it2 != parsedQueries.end(); ++it2) {
 
         Janitor<DynamicContext> dynamic_context((*it2)->createDynamicContext());
-        if(inputFile != NULL) {
+
+        if(args.inputFile != NULL) {
           // if an XML file was specified
-          Sequence seq = dynamic_context->resolveDocument(X(inputFile), 0);
+          Sequence seq = dynamic_context->resolveDocument(X(args.inputFile), 0);
           if(!seq.isEmpty() && seq.first()->isNode()) {
             dynamic_context->setContextItem(seq.first());
             dynamic_context->setContextPosition(1);
@@ -297,8 +344,8 @@ int main(int argc, char *argv[])
         }
 
         // Set the external variable values
-        map<string, char*>::iterator v = externalVars.begin();
-        for(; v != externalVars.end(); ++v) {
+        map<string, char*>::iterator v = args.externalVars.begin();
+        for(; v != args.externalVars.end(); ++v) {
           Item::Ptr value = dynamic_context->getItemFactory()->createUntypedAtomic(X(v->second), dynamic_context.get());
           dynamic_context->setExternalVariable(X(v->first.c_str()), value);
         }
@@ -308,19 +355,22 @@ int main(int argc, char *argv[])
 
         ++executionCount;
 
-        if(quiet) {
+        if(args.iDebug) {
+          InteractiveDebugger::debugQuery(*it2, dynamic_context.get());
+        }
+        else if(args.quiet) {
           (*it2)->execute(dynamic_context.get())->toSequence(dynamic_context.get());
         }
         else {
           // use STDOUT if a file was not specified
           Janitor<XMLFormatTarget> target(0);
-          if(outputFile != NULL) {
-            target.reset(new LocalFileFormatTarget(outputFile));
+          if(args.outputFile != NULL) {
+            target.reset(new LocalFileFormatTarget(args.outputFile));
           } else {
             target.reset(new StdOutFormatTarget());
           }
 
-          EventSerializer writer("UTF-8", "1.1", target.get(), dynamic_context->getMemoryManager());
+          EventSerializer writer((char*)"UTF-8", (char*)"1.1", target.get(), dynamic_context->getMemoryManager());
           writer.addNewlines(true);
           NSFixupFilter nsfilter(&writer, dynamic_context->getMemoryManager());
           (*it2)->execute(&nsfilter, dynamic_context.get());
@@ -331,7 +381,7 @@ int main(int argc, char *argv[])
   catch(XQException &e) {
     cerr << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn()
          << ": error: " << UTF8(e.getError()) << endl;
-//     cerr << "at " << e.getCppFile() << ":" << e.getCppLine() << endl;
+    InteractiveDebugger::outputLocation(e.getXQueryFile(), e.getXQueryLine(), e.getXQueryColumn());
     return 1;
   }
   catch(...) {
@@ -339,7 +389,7 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if(quiet) cout << "Executions: " << executionCount << endl;
+  if(args.quiet) cout << "Executions: " << executionCount << endl;
 
   // clean up and exit
   return 0;
@@ -366,6 +416,7 @@ void usage(const char *progname)
   cerr << "-f                : Parse using W3C Full-Text extensions" << endl;
   cerr << "-u                : Parse using W3C Update extensions" << endl;
   cerr << "-e                : Parse using XQilla specific extensions" << endl;
+  cerr << "-d                : Run the query in interactive debugging mode" << endl;
   cerr << "-x                : Use the Xerces-C data model (default is the FastXDM)" << endl;
   cerr << "-i <file>         : Load XML document and bind it as the context item" << endl;
   cerr << "-b <baseURI>      : Set the base URI for the context" << endl;
