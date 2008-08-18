@@ -381,7 +381,7 @@ int main(int argc, char *argv[])
   catch(XQException &e) {
     cerr << UTF8(e.getXQueryFile()) << ":" << e.getXQueryLine() << ":" << e.getXQueryColumn()
          << ": error: " << UTF8(e.getError()) << endl;
-    InteractiveDebugger::outputLocation(e.getXQueryFile(), e.getXQueryLine(), e.getXQueryColumn());
+    BaseInteractiveDebugger::outputLocation(e.getXQueryFile(), e.getXQueryLine(), e.getXQueryColumn());
     return 1;
   }
   catch(...) {
