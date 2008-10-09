@@ -289,6 +289,15 @@ int main(int argc, char *argv[])
   XQilla xqilla;
   MessageListenerImpl mlistener;
 
+  // Find the current working directory
+  AutoDeallocate<XMLCh> pwd(XMLPlatformUtils::getCurrentDirectory(), XMLPlatformUtils::fgMemoryManager);
+  if(pwd.get() != NULL){
+    AutoDeallocate<XMLCh> tmp(XMLPlatformUtils::fgMemoryManager, (XMLString::stringLen(pwd.get()) + 10) * sizeof(XMLCh));
+    XMLString::fixURI(pwd.get(), tmp.get());
+    XMLString::catString(tmp.get(), fwdSlashStr);
+    pwd.set(tmp.adopt());
+  }
+
   int executionCount = 0;
   try {
     QueryStore parsedQueries;
@@ -304,14 +313,9 @@ int main(int argc, char *argv[])
         context->setBaseURI(X(args.baseURIDir));
       }
       else {
-        XMLCh *pwd = XMLPlatformUtils::getCurrentDirectory(context->getMemoryManager());
-        if(pwd != NULL){
-          XMLCh *baseURI = (XMLCh*)context->getMemoryManager()->allocate((XMLString::stringLen(pwd) + 10)*sizeof(XMLCh));
-          XMLString::fixURI(pwd, baseURI);
-          XMLString::catString(baseURI, fwdSlashStr);
-          string queryPath(*it1);
-          XMLUri base(baseURI);
-          XMLUri resolved(&base, X(queryPath.c_str()));
+        if(pwd.get() != NULL){
+          XMLUri base(pwd.get());
+          XMLUri resolved(&base, X(*it1));
           context->setBaseURI(resolved.getUriText());
         }
       }
@@ -332,10 +336,22 @@ int main(int argc, char *argv[])
           it2 != parsedQueries.end(); ++it2) {
 
         Janitor<DynamicContext> dynamic_context((*it2)->createDynamicContext());
+        XPath2MemoryManager *mm = dynamic_context->getMemoryManager();
 
+        // Check if an XML file was specified
         if(args.inputFile != NULL) {
-          // if an XML file was specified
-          Sequence seq = dynamic_context->resolveDocument(X(args.inputFile), 0);
+          Sequence seq;
+
+          // Resolve the input file relative to the current working directory, not the query
+          if(pwd.get() != NULL){
+            XMLUri base(pwd.get());
+            XMLUri resolved(&base, X(args.inputFile));
+            seq = dynamic_context->resolveDocument(resolved.getUriText(), 0);
+          }
+          else {
+            seq = dynamic_context->resolveDocument(X(args.inputFile), 0);
+          }
+
           if(!seq.isEmpty() && seq.first()->isNode()) {
             dynamic_context->setContextItem(seq.first());
             dynamic_context->setContextPosition(1);
@@ -370,9 +386,9 @@ int main(int argc, char *argv[])
             target.reset(new StdOutFormatTarget());
           }
 
-          EventSerializer writer((char*)"UTF-8", (char*)"1.1", target.get(), dynamic_context->getMemoryManager());
+          EventSerializer writer((char*)"UTF-8", (char*)"1.1", target.get(), mm);
           writer.addNewlines(true);
-          NSFixupFilter nsfilter(&writer, dynamic_context->getMemoryManager());
+          NSFixupFilter nsfilter(&writer, mm);
           (*it2)->execute(&nsfilter, dynamic_context.get());
         }
       }
