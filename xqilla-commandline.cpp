@@ -239,6 +239,9 @@ int main(int argc, char *argv[])
       else if(argv[i][1] == 'e') {
         args.language |= XQilla::EXTENSIONS;
       }
+      else if(argv[i][1] == '1') {
+        args.language |= XQilla::VERSION11;
+      }
       else if(argv[i][1] == 'p') {
         args.language |= XQilla::XPATH2;
       }
@@ -429,6 +432,7 @@ void usage(const char *progname)
   cerr << "-s                : Parse XSLT 2.0" << endl;
   cerr << "-f                : Parse using W3C Full-Text extensions" << endl;
   cerr << "-u                : Parse using W3C Update extensions" << endl;
+  cerr << "-1                : Parse XQuery 1.1 / XPath 2.1 extensions" << endl;
   cerr << "-e                : Parse using XQilla specific extensions" << endl;
   cerr << "-d                : Run the query in interactive debugging mode" << endl;
   cerr << "-x                : Use the Xerces-C data model (default is the FastXDM)" << endl;
