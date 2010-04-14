@@ -27,7 +27,6 @@
 
 //XQilla includes
 #include <xqilla/xqilla-simple.hpp>
-#include <xqilla/optimizer/ASTToXML.hpp>
 
 #include <xqilla/debug/InteractiveDebugger.hpp>
 
@@ -327,7 +326,7 @@ int main(int argc, char *argv[])
       parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release(), args.parseFlags));
 
       if(args.printAST) {
-        cerr << ASTToXML().print(parsedQueries.back(), context) << endl;
+        cerr << parsedQueries.back()->getQueryPlan() << endl;
       }
     }
 
