@@ -128,7 +128,7 @@ struct CommandLineArgs
       outputFile(0),
       baseURIDir(0),
       conf(&fastConf),
-      language(XQilla::XQUERY),
+      language(XQilla::XQUERY3),
       parseFlags(0),
       xpathCompatible(false),
       quiet(false),
@@ -237,9 +237,6 @@ int main(int argc, char *argv[])
       }
       else if(argv[i][1] == 'e') {
         args.language |= XQilla::EXTENSIONS;
-      }
-      else if(argv[i][1] == '1') {
-        args.language |= XQilla::VERSION11;
       }
       else if(argv[i][1] == 'p') {
         args.language |= XQilla::XPATH2;
@@ -426,12 +423,11 @@ void usage(const char *progname)
 
   cerr << "Usage: " << name << " [options] <XQuery file>..." << endl << endl;
   cerr << "-h                : Show this display" << endl;
-  cerr << "-p                : Parse in XPath 2 mode (default is XQuery mode)" << endl;
+  cerr << "-p                : Parse in XPath 3.0 mode (default is XQuery mode)" << endl;
   cerr << "-P                : Parse in XPath 1.0 compatibility mode (default is XQuery mode)" << endl;
   cerr << "-s                : Parse XSLT 2.0" << endl;
   cerr << "-f                : Parse using W3C Full-Text extensions" << endl;
   cerr << "-u                : Parse using W3C Update extensions" << endl;
-  cerr << "-1                : Parse XQuery 1.1 / XPath 2.1 extensions" << endl;
   cerr << "-e                : Parse using XQilla specific extensions" << endl;
   cerr << "-d                : Run the query in interactive debugging mode" << endl;
   cerr << "-x                : Use the Xerces-C data model (default is the FastXDM)" << endl;
