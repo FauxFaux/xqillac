@@ -27,6 +27,8 @@
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
 #include <xercesc/util/XMLUri.hpp>
+#include <xercesc/util/XMLURL.hpp>
+#include <xercesc/util/XMLNetAccessor.hpp>
 
 //XQilla includes
 #include <xqilla/xqilla-simple.hpp>
@@ -139,6 +141,7 @@ struct CommandLineArgs
       iDebug(false),
       queryArguments(false),
       queryArgument(false),
+      offlineMode(false),
       numberOfTimes(1)
   {
   }
@@ -174,10 +177,21 @@ struct CommandLineArgs
   bool iDebug;
   bool queryArguments;
   bool queryArgument;
+  bool offlineMode;
   int numberOfTimes;
 
   static XercesConfiguration xercesConf;
   static FastXDMConfiguration fastConf;
+};
+
+struct NoInternetsXmlNetAccessor : public XMLNetAccessor {
+  virtual const XMLCh *getId() const {
+    return NULL;
+  }
+
+  virtual BinInputStream* makeNew(const XMLURL &urlSrc, const XMLNetHTTPInfo *httpInfo = 0) {
+    return NULL;
+  }
 };
 
 XercesConfiguration CommandLineArgs::xercesConf;
@@ -283,6 +297,9 @@ int main(int argc, char *argv[])
         args.queryArguments = true;
         args.queryArgument = true;
       }
+      else if(argv[i][1] == 'O') {
+        args.offlineMode = true;
+      }
       else {
         usage(argv[0]);
         return 1;
@@ -310,6 +327,11 @@ int main(int argc, char *argv[])
 
   // Create the XQilla object
   XQilla xqilla;
+
+  if (args.offlineMode) {
+    delete XMLPlatformUtils::fgNetAccessor;
+    XMLPlatformUtils::fgNetAccessor = new NoInternetsXmlNetAccessor;
+  }
   MessageListenerImpl mlistener;
 
   // Find the current working directory
@@ -489,5 +511,6 @@ void usage(const char *progname)
   cerr << "-t                : Output an XML representation of the AST" << endl;
   cerr << "-a                : Query arguments are queries, not files containing queries" << endl;
   cerr << "-A                : All the query arguments are one query" << endl;
+  cerr << "-O                : Offline mode: Don't attempt to resolve http: urls" << endl;
 }
 // vim: tabstop=2:shiftwidth=2:expandtab
