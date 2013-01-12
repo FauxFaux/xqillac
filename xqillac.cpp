@@ -21,6 +21,7 @@
 #include <vector>
 #include <map>
 
+#include <xercesc/framework/StdInInputSource.hpp>
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
 #include <xercesc/util/XMLUri.hpp>
@@ -337,20 +338,30 @@ int main(int argc, char *argv[])
 
         // Check if an XML file was specified
         if(args.inputFile != NULL) {
-          Sequence seq;
+          Item::Ptr ptr;
+          if (!strcmp(args.inputFile, "-")) {
+            xercesc::StdInInputSource stdIn;
+            ptr = dynamic_context->parseDocument(stdIn);
+          } else {
+            Sequence seq;
 
-          // Resolve the input file relative to the current working directory, not the query
-          if(pwd.get() != NULL){
-            XMLUri base(pwd.get());
-            XMLUri resolved(&base, X(args.inputFile));
-            seq = dynamic_context->resolveDocument(resolved.getUriText(), 0);
-          }
-          else {
-            seq = dynamic_context->resolveDocument(X(args.inputFile), 0);
+            // Resolve the input file relative to the current working directory, not the query
+            if(pwd.get() != NULL){
+              XMLUri base(pwd.get());
+              XMLUri resolved(&base, X(args.inputFile));
+              seq = dynamic_context->resolveDocument(resolved.getUriText(), 0);
+            }
+            else {
+              seq = dynamic_context->resolveDocument(X(args.inputFile), 0);
+            }
+
+            if(!seq.isEmpty() && seq.first()->isNode()) {
+              ptr = seq.first();
+            }
           }
 
-          if(!seq.isEmpty() && seq.first()->isNode()) {
-            dynamic_context->setContextItem(seq.first());
+          if (ptr.notNull()) {
+            dynamic_context->setContextItem(ptr);
             dynamic_context->setContextPosition(1);
             dynamic_context->setContextSize(1);
           }
