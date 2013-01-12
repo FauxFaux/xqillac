@@ -439,3 +439,4 @@ void usage(const char *progname)
   cerr << "-q                : Quiet mode - no output" << endl;
   cerr << "-t                : Output an XML representation of the AST" << endl;
 }
+// vim: tabstop=2:shiftwidth=2:expandtab
