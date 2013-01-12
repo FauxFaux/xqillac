@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
         context->setBaseURI(X(args.baseURIDir));
       }
       else {
-        if(pwd.get() != NULL){
+        if(pwd.get() != NULL && !args.queryArguments){
           XMLUri base(pwd.get());
           XMLUri resolved(&base, X(*it1));
           context->setBaseURI(resolved.getUriText());
