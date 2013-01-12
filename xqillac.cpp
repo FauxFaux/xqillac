@@ -138,6 +138,7 @@ struct CommandLineArgs
       printAST(false),
       iDebug(false),
       queryArguments(false),
+      queryArgument(false),
       numberOfTimes(1)
   {
   }
@@ -172,6 +173,7 @@ struct CommandLineArgs
   bool printAST;
   bool iDebug;
   bool queryArguments;
+  bool queryArgument;
   int numberOfTimes;
 
   static XercesConfiguration xercesConf;
@@ -277,6 +279,10 @@ int main(int argc, char *argv[])
       else if(argv[i][1] == 'a') {
         args.queryArguments = true;
       }
+      else if(argv[i][1] == 'A') {
+        args.queryArguments = true;
+        args.queryArgument = true;
+      }
       else {
         usage(argv[0]);
         return 1;
@@ -285,6 +291,18 @@ int main(int argc, char *argv[])
     else {
       args.queries.push_back(argv[i]);
     }
+  }
+
+  if (args.queryArgument && args.queries.size() > 0) {
+    std::stringstream ss;
+    vector<char*>::iterator it0 = args.queries.begin();
+    ss << *it0++;
+    while (it0 != args.queries.end()) {
+      ss << " " << *it0++;
+    }
+
+    args.queries.clear();
+    args.queries.push_back(strdup(ss.str().c_str()));
   }
 
   // Check for bad command line arguments
@@ -470,5 +488,6 @@ void usage(const char *progname)
   cerr << "-q                : Quiet mode - no output" << endl;
   cerr << "-t                : Output an XML representation of the AST" << endl;
   cerr << "-a                : Query arguments are queries, not files containing queries" << endl;
+  cerr << "-A                : All the query arguments are one query" << endl;
 }
 // vim: tabstop=2:shiftwidth=2:expandtab
