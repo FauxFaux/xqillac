@@ -18,10 +18,12 @@
  */
 
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <map>
 
 #include <xercesc/framework/StdInInputSource.hpp>
+#include <xercesc/framework/MemBufInputSource.hpp>
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
 #include <xercesc/util/XMLUri.hpp>
@@ -135,6 +137,7 @@ struct CommandLineArgs
       quiet(false),
       printAST(false),
       iDebug(false),
+      queryArguments(false),
       numberOfTimes(1)
   {
   }
@@ -168,6 +171,7 @@ struct CommandLineArgs
   bool quiet;
   bool printAST;
   bool iDebug;
+  bool queryArguments;
   int numberOfTimes;
 
   static XercesConfiguration xercesConf;
@@ -270,6 +274,9 @@ int main(int argc, char *argv[])
         args.iDebug = true;
         args.parseFlags |= XQilla::DEBUG_QUERY;
       }
+      else if(argv[i][1] == 'a') {
+        args.queryArguments = true;
+      }
       else {
         usage(argv[0]);
         return 1;
@@ -321,7 +328,16 @@ int main(int argc, char *argv[])
       context->setXPath1CompatibilityMode(args.xpathCompatible);
       context->setMessageListener(&mlistener);
 
-      parsedQueries.push_back(xqilla.parseFromURI(X(*it1), contextGuard.release(), args.parseFlags));
+      XQQuery* parsed;
+      if (args.queryArguments) {
+        std::stringstream ss;
+        ss << "parameter query #" << (it1 - args.queries.begin());
+        parsed = xqilla.parse(X(*it1), contextGuard.release(), X(ss.str().c_str()), args.parseFlags);
+      } else {
+        parsed = xqilla.parseFromURI(X(*it1), contextGuard.release(), args.parseFlags);
+      }
+
+      parsedQueries.push_back(parsed);
 
       if(args.printAST) {
         cerr << parsedQueries.back()->getQueryPlan() << endl;
@@ -449,5 +465,6 @@ void usage(const char *progname)
   cerr << "-n <number>       : Run the queries a number of times" << endl;
   cerr << "-q                : Quiet mode - no output" << endl;
   cerr << "-t                : Output an XML representation of the AST" << endl;
+  cerr << "-a                : Query arguments are queries, not files containing queries" << endl;
 }
 // vim: tabstop=2:shiftwidth=2:expandtab
