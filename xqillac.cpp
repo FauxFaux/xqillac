@@ -424,6 +424,10 @@ int main(int argc, char *argv[])
     BaseInteractiveDebugger::outputLocation(e.getXQueryFile(), e.getXQueryLine(), e.getXQueryColumn());
     return 1;
   }
+  catch (XMLException &e) {
+    cerr << "xerces internal error: " << UTF8(e.getType()) << ": " << UTF8(e.getMessage()) << endl;
+    return 1;
+  }
   catch(...) {
     cerr << "Caught unknown exception" << endl;
     return 1;
