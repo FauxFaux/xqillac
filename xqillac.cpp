@@ -202,6 +202,8 @@ int main(int argc, char *argv[])
   // First we parse the command line arguments
   CommandLineArgs args;
 
+  bool xqillac = 'c' == argv[0][strlen(argv[0]) - 1];
+
   for(int i = 1; i < argc; ++i) {
     if(*argv[i] == '-' && argv[i][2] == '\0' ){
 
@@ -300,6 +302,9 @@ int main(int argc, char *argv[])
       else if(argv[i][1] == 'O') {
         args.offlineMode = true;
       }
+      else if(argv[i][1] == 'c') {
+        xqillac = true;
+      }
       else {
         usage(argv[0]);
         return 1;
@@ -308,6 +313,13 @@ int main(int argc, char *argv[])
     else {
       args.queries.push_back(argv[i]);
     }
+  }
+
+  if (xqillac) {
+    args.queryArguments = true;
+    args.queryArgument = true;
+    args.offlineMode = true;
+    args.inputFile = "-";
   }
 
   if (args.queryArgument && args.queries.size() > 0) {
@@ -512,5 +524,6 @@ void usage(const char *progname)
   cerr << "-a                : Query arguments are queries, not files containing queries" << endl;
   cerr << "-A                : All the query arguments are one query" << endl;
   cerr << "-O                : Offline mode: Don't attempt to resolve http: urls" << endl;
+  cerr << "-c                : Act as a command-line tool (implies -i - -O -A); default as xqillac" << endl;
 }
 // vim: tabstop=2:shiftwidth=2:expandtab
