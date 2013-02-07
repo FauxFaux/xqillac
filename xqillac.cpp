@@ -26,6 +26,7 @@
 #include <xercesc/framework/MemBufInputSource.hpp>
 #include <xercesc/framework/StdOutFormatTarget.hpp>
 #include <xercesc/framework/LocalFileFormatTarget.hpp>
+#include <xercesc/dom/DOM.hpp>
 #include <xercesc/util/XMLUri.hpp>
 #include <xercesc/util/XMLURL.hpp>
 #include <xercesc/util/XMLNetAccessor.hpp>
@@ -194,6 +195,38 @@ struct NoInternetsXmlNetAccessor : public XMLNetAccessor {
   }
 };
 
+struct StdoutURIResolver : public URIResolver {
+  bool resolveDocument (Sequence &result, const XMLCh *uri, DynamicContext *context, const QueryPathNode *projection) {
+    return false;
+  }
+
+  bool resolveCollection (Sequence &result, const XMLCh *uri, DynamicContext *context, const QueryPathNode *projection) {
+    return false;
+  }
+
+  bool resolveDefaultCollection (Sequence &result, DynamicContext *context, const QueryPathNode *projection) {
+    return false;
+  }
+
+  bool putDocument (const Node::Ptr &document, const XMLCh *uri, DynamicContext *context) {
+    if (!uri || !!strcmp("stdin", UTF8(uri)))
+      return false;
+
+    // a copy of XercesURIResolver with hardcoded strings instead of references to private things
+    const DOMNode* domnode = (const DOMNode*)document->getInterface(XercesConfiguration::gXerces);
+    if (!domnode)
+      return false;
+
+    StdOutFormatTarget target;
+    DOMImplementation *impl = DOMImplementationRegistry::getDOMImplementation(X("XPath2 3.0"));
+    AutoRelease<DOMLSSerializer> writer(impl->createLSSerializer());
+    AutoRelease<DOMLSOutput> output(impl->createLSOutput());
+    output->setByteStream(&target);
+    writer->write(domnode, output.get());
+    return true;
+  }
+};
+
 XercesConfiguration CommandLineArgs::xercesConf;
 FastXDMConfiguration CommandLineArgs::fastConf;
 
@@ -320,6 +353,8 @@ int main(int argc, char *argv[])
     args.queryArgument = true;
     args.offlineMode = true;
     args.inputFile = "-";
+    args.language |= XQilla::UPDATE;
+    args.conf = &CommandLineArgs::xercesConf;
   }
 
   if (args.queryArgument && args.queries.size() > 0) {
@@ -409,6 +444,7 @@ int main(int argc, char *argv[])
           Item::Ptr ptr;
           if (!strcmp(args.inputFile, "-")) {
             xercesc::StdInInputSource stdIn;
+            dynamic_context->registerURIResolver(new StdoutURIResolver, true);
             ptr = dynamic_context->parseDocument(stdIn);
           } else {
             Sequence seq;
@@ -524,6 +560,6 @@ void usage(const char *progname)
   cerr << "-a                : Query arguments are queries, not files containing queries" << endl;
   cerr << "-A                : All the query arguments are one query" << endl;
   cerr << "-O                : Offline mode: Don't attempt to resolve http: urls" << endl;
-  cerr << "-c                : Act as a command-line tool (implies -i - -O -A); default as xqillac" << endl;
+  cerr << "-c                : Act as a command-line tool (implies -i - -O -A -u); default as xqillac" << endl;
 }
 // vim: tabstop=2:shiftwidth=2:expandtab
