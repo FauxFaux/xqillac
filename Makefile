@@ -1,4 +1,5 @@
 LDLIBS=-lxqilla
+CXXFLAGS?=-O2
 
 all: xqillac
 clean:
