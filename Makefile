@@ -1,4 +1,4 @@
-LDLIBS=-lxqilla
+LDLIBS=-lxqilla -lxerces-c
 CXXFLAGS?=-O2
 
 all: xqillac
